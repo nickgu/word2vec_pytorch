@@ -13,11 +13,11 @@ class Word2Vec:
     def __init__(self,
                  input_file_name,
                  output_file_name,
-                 emb_dimension=100,
+                 emb_dimension=32,
                  batch_size=50,
-                 window_size=5,
-                 iteration=1,
-                 initial_lr=0.025,
+                 window_size=2,
+                 iteration=2,
+                 initial_lr=0.02,
                  min_count=5):
         """Initilize class parameters.
 
@@ -45,9 +45,16 @@ class Word2Vec:
         self.skip_gram_model = SkipGramModel(self.emb_size, self.emb_dimension)
         self.use_cuda = torch.cuda.is_available()
         if self.use_cuda:
+            print >> sys.stderr, 'Use CUDA'
             self.skip_gram_model.cuda()
+
         self.optimizer = optim.SGD(
             self.skip_gram_model.parameters(), lr=self.initial_lr)
+        '''
+        self.optimizer = optim.SparseAdam(
+            self.skip_gram_model.parameters(), lr=self.initial_lr)
+        '''
+
 
     def train(self):
         """Multiple training.
@@ -60,10 +67,12 @@ class Word2Vec:
         process_bar = tqdm(range(int(batch_count)))
         # self.skip_gram_model.save_embedding(
         #     self.data.id2word, 'begin_embedding.txt', self.use_cuda)
+
+        acc_loss = 0.0
         for i in process_bar:
             pos_pairs = self.data.get_batch_pairs(self.batch_size,
                                                   self.window_size)
-            neg_v = self.data.get_neg_v_neg_sampling(pos_pairs, 5)
+            neg_v = self.data.get_neg_v_neg_sampling(pos_pairs, 2)
             pos_u = [pair[0] for pair in pos_pairs]
             pos_v = [pair[1] for pair in pos_pairs]
 
@@ -80,13 +89,15 @@ class Word2Vec:
             loss.backward()
             self.optimizer.step()
 
-            process_bar.set_description("Loss: %0.8f, lr: %0.6f" %
-                                        (loss.data[0],
+            acc_loss = acc_loss * 0.99 + 0.01 * loss.data[0]
+            process_bar.set_description("Loss:%0.3f, AccLoss:%.3f, lr: %0.6f" %
+                                        (loss.data[0], acc_loss,
                                          self.optimizer.param_groups[0]['lr']))
             if i * self.batch_size % 100000 == 0:
                 lr = self.initial_lr * (1.0 - 1.0 * i / batch_count)
                 for param_group in self.optimizer.param_groups:
                     param_group['lr'] = lr
+
         self.skip_gram_model.save_embedding(
             self.data.id2word, self.output_file_name, self.use_cuda)
 
