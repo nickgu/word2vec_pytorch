@@ -13,12 +13,12 @@ class Word2Vec:
     def __init__(self,
                  input_file_name,
                  output_file_name,
-                 emb_dimension=32,
+                 emb_dimension=100,
                  batch_size=50,
                  window_size=2,
-                 iteration=2,
-                 initial_lr=0.02,
-                 min_count=5):
+                 iteration=50,
+                 initial_lr=0.01,
+                 min_count=0):
         """Initilize class parameters.
 
         Args:
@@ -48,12 +48,12 @@ class Word2Vec:
             print >> sys.stderr, 'Use CUDA'
             self.skip_gram_model.cuda()
 
+        '''
         self.optimizer = optim.SGD(
             self.skip_gram_model.parameters(), lr=self.initial_lr)
         '''
         self.optimizer = optim.SparseAdam(
             self.skip_gram_model.parameters(), lr=self.initial_lr)
-        '''
 
 
     def train(self):
@@ -89,19 +89,22 @@ class Word2Vec:
             loss.backward()
             self.optimizer.step()
 
-            acc_loss = acc_loss * 0.99 + 0.01 * loss.data[0]
+            cur_loss = loss.data[0] / len(pos_pairs)
+            acc_loss = acc_loss * 0.99 + 0.01 * cur_loss
             process_bar.set_description("Loss:%0.3f, AccLoss:%.3f, lr: %0.6f" %
-                                        (loss.data[0], acc_loss,
+                                        (cur_loss, acc_loss,
                                          self.optimizer.param_groups[0]['lr']))
+            '''
             if i * self.batch_size % 100000 == 0:
                 lr = self.initial_lr * (1.0 - 1.0 * i / batch_count)
                 for param_group in self.optimizer.param_groups:
                     param_group['lr'] = lr
+            '''
 
         self.skip_gram_model.save_embedding(
             self.data.id2word, self.output_file_name, self.use_cuda)
 
 
 if __name__ == '__main__':
-    w2v = Word2Vec(input_file_name=sys.argv[1], output_file_name=sys.argv[2])
+    w2v = Word2Vec(input_file_name=sys.argv[1], output_file_name=sys.argv[2], min_count=0)
     w2v.train()
