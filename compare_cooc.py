@@ -58,8 +58,6 @@ if __name__=='__main__':
             for j in range(window_size):
                 b = terms[idx + j + 1]
 
-                if a == '89377':
-                    print b
                 cooc_dict.add(a, b)
                 cooc_dict.add(b, a)
     
