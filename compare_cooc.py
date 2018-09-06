@@ -7,14 +7,16 @@ import sys
 import annoy
 import pydev
 
+EmbeddingSize = 500
+
 class ItemIndex:
     def __init__(self, filename):
-        self.index = annoy.AnnoyIndex(f=100, metric='dot')
+        self.index = annoy.AnnoyIndex(f=EmbeddingSize, metric='dot')
 
         fd = file(filename)
         for line in fd.readlines():
             row = line.strip().split(' ')
-            if len(row)!=101:
+            if len(row)!=EmbeddingSize+1:
                 continue
             key = row[0]
             if key == '':
